@@ -1,0 +1,119 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fraud-shield"
+version = "0.1.0"
+description = "Calibrated credit card fraud detection with drift monitoring."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Jenish" }]
+keywords = ["fraud-detection", "machine-learning", "calibration", "drift-monitoring"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pandas>=2.2,<2.3",
+    "numpy>=2.1,<2.2",
+    "scikit-learn>=1.6,<1.7",
+    "lightgbm>=4.5,<4.6",
+    "optuna>=4.1,<4.2",
+    "shap>=0.46,<0.47",
+    "pandera>=0.20,<0.22",
+    "pydantic>=2.10,<2.11",
+    "pydantic-settings>=2.7,<2.8",
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.34,<0.35",
+    "streamlit>=1.41,<1.42",
+    "plotly>=5.24,<5.25",
+    "structlog>=24.4,<25",
+    "joblib>=1.4,<2",
+    "pyyaml>=6.0,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-cov>=6.0,<7",
+    "ruff>=0.8,<0.9",
+    "mypy>=1.14,<2",
+    "pre-commit>=4.0,<5",
+    "httpx>=0.28,<0.29",
+    "types-PyYAML>=6.0",
+]
+
+[project.urls]
+Repository = "https://github.com/Jenisssh/fraud-shield"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+fraud_shield = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+extend-exclude = ["notebooks", "data"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific
+    "N",   # pep8-naming
+]
+ignore = [
+    "E501", # handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N802", "N803"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.coverage.run]
+source = ["src/fraud_shield"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

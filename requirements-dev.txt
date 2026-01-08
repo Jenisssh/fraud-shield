@@ -1,0 +1,11 @@
+# Dev-only dependencies — install with: pip install -r requirements-dev.txt
+# Snapshot taken 2026-01-07.
+-r requirements.txt
+
+pytest==8.3.4
+pytest-cov==6.0.0
+ruff==0.8.4
+mypy==1.14.0
+pre-commit==4.0.1
+httpx==0.28.1
+types-PyYAML==6.0.12.20241230
