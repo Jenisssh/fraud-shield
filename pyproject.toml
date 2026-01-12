@@ -47,6 +47,12 @@ dev = [
     "httpx>=0.28,<0.29",
     "types-PyYAML>=6.0",
 ]
+notebook = [
+    "jupyter>=1.1,<2",
+    "ipykernel>=6.29,<7",
+    "matplotlib>=3.10,<4",
+    "seaborn>=0.13,<0.14",
+]
 
 [project.urls]
 Repository = "https://github.com/Jenisssh/fraud-shield"

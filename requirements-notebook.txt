@@ -1,0 +1,8 @@
+# Notebook dependencies — install with: pip install -r requirements-notebook.txt
+# Snapshot taken 2026-01-11.
+-r requirements.txt
+
+jupyter==1.1.1
+ipykernel==6.29.5
+matplotlib==3.10.0
+seaborn==0.13.2
