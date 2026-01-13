@@ -26,6 +26,7 @@ dependencies = [
     "optuna>=4.1,<4.2",
     "shap>=0.46,<0.47",
     "pandera>=0.20,<0.22",
+    "multimethod<2",  # pandera 0.21 imports overload from multimethod, dropped in 2.0
     "pydantic>=2.10,<2.11",
     "pydantic-settings>=2.7,<2.8",
     "fastapi>=0.115,<0.116",
