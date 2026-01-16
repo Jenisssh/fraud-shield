@@ -6,10 +6,10 @@ Two flavours live here:
   stratification. The right choice for the *headline* model score, since
   it gives every transaction an equal chance of landing in any partition.
 
-- :func:`time_aware_split` (Day 4b) — chronological split. Train on the
-  earliest transactions, test on the latest. Reveals temporal generalization
-  — the gap between this score and the stratified score is one of the
-  numbers we'll report as a sanity check on whether the model would survive
+- :func:`time_aware_split` — chronological split. Train on the earliest
+  transactions, test on the latest. Reveals temporal generalization — the
+  gap between this score and the stratified score is one of the numbers
+  we'll report as a sanity check on whether the model would survive
   deployment.
 """
 
@@ -74,6 +74,66 @@ def stratified_random_split(
         stratify=train_val[target],
         random_state=random_state,
     )
+    return (
+        train.reset_index(drop=True),
+        val.reset_index(drop=True),
+        test.reset_index(drop=True),
+    )
+
+
+def time_aware_split(
+    df: pd.DataFrame,
+    *,
+    time_column: str = "Time",
+    test_size: float | None = None,
+    val_size: float | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Chronological 3-way split: train (earliest) → val → test (latest).
+
+    The dataframe is sorted by ``time_column`` (stable sort, so ties keep
+    their original order). No randomness: this function is fully
+    deterministic and intentionally has no ``random_state`` parameter.
+
+    Use this as a sanity check on the headline stratified score: if
+    ``PR-AUC(stratified) - PR-AUC(time_aware)`` is large, the model is
+    fragile to temporal drift and the deployment is at risk.
+
+    Parameters
+    ----------
+    df:
+        Source dataframe. Must contain ``time_column``.
+    time_column:
+        Column to sort by. Default ``"Time"`` (the ULB column).
+    test_size, val_size:
+        Fractions of the *original* dataframe. Defaults come from
+        :class:`fraud_shield.config.Settings`.
+
+    Returns
+    -------
+    tuple of (train, val, test)
+        Index-reset copies. Train's max time ≤ val's min time, and val's
+        max time ≤ test's min time.
+    """
+    test_size = settings.test_size if test_size is None else test_size
+    val_size = settings.val_size if val_size is None else val_size
+
+    if test_size + val_size >= 1.0:
+        raise ValueError(
+            f"test_size + val_size must be < 1; got {test_size} + {val_size}"
+        )
+    if time_column not in df.columns:
+        raise KeyError(f"time_column {time_column!r} not in dataframe")
+
+    sorted_df = df.sort_values(time_column, kind="stable").reset_index(drop=True)
+    n = len(sorted_df)
+    n_test = round(n * test_size)
+    n_val = round(n * val_size)
+    n_train = n - n_val - n_test
+
+    train = sorted_df.iloc[:n_train]
+    val = sorted_df.iloc[n_train : n_train + n_val]
+    test = sorted_df.iloc[n_train + n_val :]
+
     return (
         train.reset_index(drop=True),
         val.reset_index(drop=True),
