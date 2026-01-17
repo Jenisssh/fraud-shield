@@ -88,6 +88,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["N802", "N803"]
+# sklearn transformer/estimator convention: X is the feature matrix
+"src/fraud_shield/features/*.py" = ["N803"]
+"src/fraud_shield/models/*.py" = ["N803"]
 
 [tool.ruff.format]
 quote-style = "double"
