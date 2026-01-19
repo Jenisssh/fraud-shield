@@ -1,9 +1,8 @@
 """Tests for fraud_shield.models.baseline.
 
-For end-to-end behaviour we use a synthetic dataset where ``V14 < -1.0``
-drives fraud — that way a logistic baseline should score AUC well above
-chance, which lets us assert non-trivial performance without needing
-the real ULB CSV.
+For end-to-end behaviour we use the ``predictable_fraud_df`` fixture
+(defined in conftest) where V14 sign drives the label — that way the
+baseline should score PR-AUC well above chance.
 """
 
 from __future__ import annotations
@@ -17,22 +16,6 @@ from sklearn.pipeline import Pipeline
 from fraud_shield.evaluation.metrics import pr_auc
 from fraud_shield.features.transformers import TimeAmountFeatures
 from fraud_shield.models.baseline import build_baseline_pipeline, train_baseline
-
-
-@pytest.fixture
-def predictable_fraud_df() -> pd.DataFrame:
-    """Synthetic dataset where Class is driven by V14 sign — easy for any model."""
-    rng = np.random.default_rng(42)
-    n = 2_000
-    v14 = rng.normal(size=n)
-    y = (v14 < -1.0).astype(int)  # ~16% fraud — easy to learn
-
-    data: dict[str, np.ndarray] = {f"V{i}": rng.normal(size=n) for i in range(1, 29)}
-    data["V14"] = v14
-    data["Time"] = np.arange(n, dtype=float) * 7.3
-    data["Amount"] = rng.exponential(scale=50.0, size=n)
-    data["Class"] = y
-    return pd.DataFrame(data)
 
 
 def _split_xy(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
