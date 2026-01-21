@@ -53,6 +53,7 @@ notebook = [
     "ipykernel>=6.29,<7",
     "matplotlib>=3.10,<4",
     "seaborn>=0.13,<0.14",
+    "imbalanced-learn>=0.12,<0.14",
 ]
 
 [project.urls]
