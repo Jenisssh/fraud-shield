@@ -92,6 +92,7 @@ ignore = [
 # sklearn transformer/estimator convention: X is the feature matrix
 "src/fraud_shield/features/*.py" = ["N803", "N806"]
 "src/fraud_shield/models/*.py" = ["N803", "N806"]
+"src/fraud_shield/evaluation/*.py" = ["N803", "N806"]
 
 [tool.ruff.format]
 quote-style = "double"
