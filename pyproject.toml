@@ -93,6 +93,8 @@ ignore = [
 "src/fraud_shield/features/*.py" = ["N803", "N806"]
 "src/fraud_shield/models/*.py" = ["N803", "N806"]
 "src/fraud_shield/evaluation/*.py" = ["N803", "N806"]
+# FastAPI idiom: Depends() in argument defaults is standard
+"src/fraud_shield/api/*.py" = ["B008"]
 
 [tool.ruff.format]
 quote-style = "double"
