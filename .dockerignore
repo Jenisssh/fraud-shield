@@ -1,0 +1,38 @@
+.git/
+.github/
+.venv/
+.idea/
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Data is mounted via volume, not baked in
+data/raw/*
+data/interim/*
+data/processed/*
+
+# Notebooks and tests don't ship in the runtime image
+notebooks/
+tests/
+
+# Local config + secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docs
+docs/
+*.md
+!README.md
