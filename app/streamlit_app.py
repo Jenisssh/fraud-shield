@@ -52,6 +52,53 @@ def call_predict(transaction: dict[str, float]) -> dict[str, Any] | None:
     return dict(r.json())
 
 
+def call_explain(transaction: dict[str, float]) -> dict[str, Any] | None:
+    try:
+        r = requests.post(f"{API_URL}/explain", json=transaction, timeout=REQUEST_TIMEOUT)
+    except requests.RequestException as e:
+        st.error(f"Could not reach API at {API_URL}: {e}")
+        return None
+    if r.status_code != 200:
+        st.error(f"API returned {r.status_code}: {r.text[:200]}")
+        return None
+    return dict(r.json())
+
+
+def shap_waterfall(
+    expected_value: float,
+    contributions: list[dict[str, Any]],
+) -> go.Figure:
+    """Plotly waterfall: expected_value → margin, with one bar per top feature."""
+    measures = ["absolute"] + ["relative"] * len(contributions) + ["total"]
+    x_labels = (
+        ["E[score]"] + [f"{c['feature']} = {c['value']:.3f}" for c in contributions] + ["margin"]
+    )
+    y_values: list[float | None] = [expected_value]
+    y_values.extend(float(c["shap_value"]) for c in contributions)
+    y_values.append(None)  # total is computed by Plotly
+
+    fig = go.Figure(
+        go.Waterfall(
+            orientation="v",
+            measure=measures,
+            x=x_labels,
+            y=y_values,
+            connector={"line": {"color": "#888", "width": 1}},
+            increasing={"marker": {"color": "#dd8452"}},
+            decreasing={"marker": {"color": "#4c72b0"}},
+            totals={"marker": {"color": "#222"}},
+        )
+    )
+    fig.update_layout(
+        height=420,
+        margin={"t": 30, "b": 30, "l": 40, "r": 30},
+        xaxis_tickangle=-30,
+        yaxis_title="log-odds",
+        showlegend=False,
+    )
+    return fig
+
+
 def fetch_health() -> dict[str, Any] | None:
     try:
         r = requests.get(f"{API_URL}/health", timeout=REQUEST_TIMEOUT)
@@ -153,10 +200,52 @@ with tab_score:
                 st.metric("Model version", result["model_version"])
 
 
-# --------------------------------------------------------------------- Tab 2 (placeholder)
+# --------------------------------------------------------------------- Tab 2
 with tab_explain:
     st.subheader("SHAP explanation")
-    st.info("Coming in the next commit — wires up POST /explain with a waterfall plot.")
+    st.caption(
+        "Each bar is one feature's contribution to the model's margin (log-odds). "
+        "Orange pushes the prediction toward FRAUD, blue toward OK. "
+        "Sum of bars + the base value = margin, which becomes the calibrated "
+        "score after the sigmoid."
+    )
+
+    if st.button("Explain current transaction", type="primary"):
+        st.session_state.last_explain = call_explain(st.session_state.transaction)
+
+    explain = st.session_state.get("last_explain")
+    if explain is None:
+        st.info(
+            "Click *Explain current transaction* to fetch SHAP values for the "
+            "transaction shown in the Score tab."
+        )
+    else:
+        top_k = st.slider("Show top-k features", min_value=3, max_value=10, value=8)
+        top = explain["top_contributions"][:top_k]
+
+        st.plotly_chart(
+            shap_waterfall(explain["expected_value"], top),
+            use_container_width=True,
+        )
+
+        st.caption(
+            f"Score: **{explain['score']:.3f}**  •  "
+            f"Decision: **{explain['decision']}**  •  "
+            f"Threshold: {explain['threshold']:.4f}  •  "
+            f"Margin: {explain['raw_score']:.3f}"
+        )
+
+        with st.expander("Full contributions table"):
+            st.dataframe(
+                explain["top_contributions"],
+                column_config={
+                    "feature": "Feature",
+                    "value": st.column_config.NumberColumn("Value", format="%.4f"),
+                    "shap_value": st.column_config.NumberColumn("SHAP", format="%.4f"),
+                },
+                hide_index=True,
+                use_container_width=True,
+            )
 
 
 # --------------------------------------------------------------------- Tab 3 (placeholder)
