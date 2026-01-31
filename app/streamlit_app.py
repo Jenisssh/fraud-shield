@@ -19,9 +19,13 @@ import os
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+
+from fraud_shield.monitoring.drift import detect_drift
+from fraud_shield.monitoring.simulate import inject_drift
 
 API_URL = os.getenv("FRAUDSHIELD_API_URL", "http://localhost:8000")
 REQUEST_TIMEOUT = 5.0
@@ -248,10 +252,98 @@ with tab_explain:
             )
 
 
-# --------------------------------------------------------------------- Tab 3 (placeholder)
+# --------------------------------------------------------------------- Tab 3
+@st.cache_data
+def baseline_reference(n: int = 2_000) -> pd.DataFrame:
+    """Synthetic reference distribution standing in for the training set.
+
+    Cached so the slider doesn't redraw it every interaction.
+    """
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame({name: rng.normal(size=n) for name in V_NAMES})
+    df["Amount"] = rng.exponential(scale=80.0, size=n)
+    return df
+
+
 with tab_drift:
     st.subheader("Drift monitoring")
-    st.info(
-        "Coming in the next commit — PSI heatmap with a 'simulate drift' "
-        "slider on top of the training distribution."
+    st.caption(
+        "Compare a synthetic 'production window' against a stable reference "
+        "distribution. Move the slider to inject covariate drift into a chosen "
+        "feature and watch PSI cross the alert threshold in real time."
     )
+
+    reference = baseline_reference()
+
+    control_a, control_b = st.columns([1, 2])
+    with control_a:
+        drift_feature = st.selectbox(
+            "Feature to drift",
+            options=list(reference.columns),
+            index=list(reference.columns).index("V14"),
+        )
+    with control_b:
+        magnitude = st.slider(
+            "Drift magnitude (standard deviations)",
+            min_value=0.0,
+            max_value=3.0,
+            value=0.0,
+            step=0.1,
+        )
+
+    current = inject_drift(reference, [drift_feature], kind="mean_shift", magnitude=magnitude)
+    report = detect_drift(reference, current, psi_threshold=0.2)
+
+    n_drifted = int(report["drifted"].sum())
+    metric_a, metric_b, metric_c = st.columns(3)
+    with metric_a:
+        st.metric("Features drifted", n_drifted, delta=f"of {len(report)}")
+    with metric_b:
+        st.metric("Max PSI", f"{report['psi'].max():.3f}")
+    with metric_c:
+        focus = report[report["feature"] == drift_feature].iloc[0]
+        st.metric(
+            f"PSI({drift_feature})",
+            f"{focus['psi']:.3f}",
+            delta=f"KS p={focus['ks_pvalue']:.3g}",
+            delta_color="off",
+        )
+
+    bar_colors = ["#dd8452" if d else "#4c72b0" for d in report["drifted"]]
+    fig = go.Figure(
+        go.Bar(
+            x=report["feature"],
+            y=report["psi"],
+            marker_color=bar_colors,
+            hovertemplate=("feature=%{x}<br>" "PSI=%{y:.4f}<br>" "<extra></extra>"),
+        )
+    )
+    fig.add_hline(
+        y=0.2,
+        line_dash="dash",
+        line_color="#dd8452",
+        annotation_text="alert threshold (PSI = 0.2)",
+        annotation_position="top right",
+    )
+    fig.update_layout(
+        title="PSI per feature (orange = drifted)",
+        yaxis_title="PSI",
+        xaxis_tickangle=-45,
+        height=420,
+        margin={"t": 50, "b": 80, "l": 40, "r": 30},
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("Full drift report"):
+        st.dataframe(
+            report,
+            column_config={
+                "feature": "Feature",
+                "psi": st.column_config.NumberColumn("PSI", format="%.4f"),
+                "ks_statistic": st.column_config.NumberColumn("KS stat", format="%.4f"),
+                "ks_pvalue": st.column_config.NumberColumn("KS p-value", format="%.3g"),
+                "drifted": st.column_config.CheckboxColumn("Alert"),
+            },
+            hide_index=True,
+            use_container_width=True,
+        )
